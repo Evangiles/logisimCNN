@@ -28,14 +28,14 @@ except ImportError:
 # --- Focal Loss Implementation ---
 class FocalLoss(nn.Module):
     """
-    Focal Loss 구현
-    논문: "Focal Loss for Dense Object Detection" (Lin et al., 2017)
-    클래스 불균형 문제 해결을 위한 손실 함수
+    Focal Loss implementation
+    Paper: "Focal Loss for Dense Object Detection" (Lin et al., 2017)
+    Loss function for addressing class imbalance problems
     
     FL(p_t) = -α_t * (1 - p_t)^γ * log(p_t)
     
     Args:
-        alpha: 클래스별 가중치 (list, tensor, or None)
+        alpha: class-wise weights (list, tensor, or None)
         gamma: focusing parameter (default: 2.0)
         reduction: 'mean', 'sum', or 'none'
     """
@@ -51,16 +51,16 @@ class FocalLoss(nn.Module):
     def forward(self, inputs, targets):
         """
         Args:
-            inputs: (N, C) logit 값
-            targets: (N,) 정답 레이블
+            inputs: (N, C) logit values
+            targets: (N,) ground truth labels
         """
-        # Cross Entropy Loss 계산
+        # Calculate Cross Entropy Loss
         ce_loss = F.cross_entropy(inputs, targets, reduction='none')
         
-        # 소프트맥스 확률 계산 (p_t)
+        # Calculate softmax probability (p_t)
         p = torch.exp(-ce_loss)
         
-        # Alpha 가중치 적용
+        # Apply Alpha weighting
         if self.alpha is not None:
             if self.alpha.device != targets.device:
                 self.alpha = self.alpha.to(targets.device)

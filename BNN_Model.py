@@ -69,7 +69,7 @@ class BinaryLinear(nn.Module):
         self.out_features = out_features
         self.use_bias = use_bias
         
-        # He 초기화 (MSRA 초기화)
+        # He initialization (MSRA initialization)
         std = np.sqrt(2.0 / in_features)
         self.weight = nn.Parameter(torch.randn(out_features, in_features) * std)
         
@@ -94,7 +94,7 @@ class BinaryConv2d(nn.Module):
         self.use_bias = use_bias
         self.padding_value = padding_value
         
-        # He 초기화 (MSRA 초기화)
+        # He initialization (MSRA initialization)
         fan_in = in_channels * kernel_size * kernel_size
         std = np.sqrt(2.0 / fan_in)
         self.weight = nn.Parameter(torch.randn(out_channels, in_channels, kernel_size, kernel_size) * std)
@@ -148,44 +148,44 @@ class CustomGAP(nn.Module):
         # 지정된 값(16)으로 나눔
         return spatial_sum / self.divisor
 
-# --- 논문 기반 BNN 모델 (BN 없음, sReLU 사용, MaxPool 제거, Sign 활성화 추가) ---
+# Paper-based BNN model (No BN, sReLU, no MaxPool, added Sign activation)
 class PaperInspiredBNN(nn.Module):
     """
-    "Single-bit-per-weight deep convolutional neural networks without batch-normalization" 논문 기반 모델
-    - BN 레이어 제거
-    - sReLU 활성화 함수 사용
-    - sReLU 후 Sign 활성화 추가
-    - 마지막 단에 상수 스케일링
-    - He 초기화
-    - MaxPooling 제거 (더 많은 공간 정보 보존)
+    Model based on "Single-bit-per-weight deep convolutional neural networks without batch-normalization" paper
+    - Removed BN layers
+    - Uses sReLU activation function
+    - Added Sign activation after sReLU
+    - Constant scaling at the end
+    - He initialization
+    - Removed MaxPooling (preserves more spatial information)
     """
     def __init__(self, c1_channels=16, c2_channels=32, num_classes=10, scale_value=None):
         super(PaperInspiredBNN, self).__init__()
         
         if scale_value is None:
-            scale_value = float(num_classes)  # 클래스 수와 동일하게 설정
+            scale_value = float(num_classes)  # Set equal to number of classes
             
-        # 첫 번째 컨볼루션 블록 (MaxPool 제거)
+        # First convolution block (MaxPool removed)
         self.conv1 = BinaryConv2d(1, c1_channels, kernel_size=3, padding=0)
         self.srelu1 = sReLU()
-        #self.sign1 = BinarizeActivation()  # sReLU 후 Sign 활성화 추가
+        #self.sign1 = BinarizeActivation()  # Add Sign activation after sReLU
         
-        # 두 번째 컨볼루션 블록 (MaxPool 제거) - 주석 처리
+        # Second convolution block (MaxPool removed) - commented out
         #self.conv2 = BinaryConv2d(c1_channels, c2_channels, kernel_size=2, padding=0)
         #self.srelu2 = sReLU()
-        # self.sign2 = BinarizeActivation()  # sReLU 후 Sign 활성화 추가
+        # self.sign2 = BinarizeActivation()  # Add Sign activation after sReLU
         
-        # 상수 스케일링 레이어 (논문에서 제안)
+        # Constant scaling layer (proposed in paper)
         self.constant_scaling = ConstantScaling(scale_value)
         
-        # Custom Global Average Pooling (5x5=25 대신 16으로 나눔)
+        # Custom Global Average Pooling (divide by 16 instead of 5x5=25)
         self.global_avg_pool = CustomGAP(divisor=16.0)
         
-        # GAP 이후 sReLU 활성화 함수
+        # sReLU activation function after GAP
         #self.srelu_after_gap = sReLU()
         self.sign_after_gap = BinarizeActivation()
         
-        # 최종 분류 레이어 - c1_channels 사용 (conv2 제거로 인해)
+        # Final classification layer - uses c1_channels (due to conv2 removal)
         self.fc = BinaryLinear(c1_channels, num_classes)
         
         print(f"📋 PaperInspiredBNN 초기화 완료:")
@@ -243,22 +243,22 @@ def train_paper_inspired_model(model, X_train, y_train, X_test, y_test,
 
     criterion = nn.CrossEntropyLoss()
     
-    # Adam 옵티마이저 사용 (논문에서 권장)
+    # Use Adam optimizer (recommended in paper)
     optimizer = optim.Adam(model.parameters(), lr=initial_lr, weight_decay=weight_decay)
     
-    # 코사인 학습률 감쇠 (논문에서 사용)
+    # Cosine learning rate decay (used in paper)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=initial_lr/100)
 
     train_losses, train_accuracies, test_accuracies = [], [], []
     best_test_acc = 0.0
 
     model_name = model.__class__.__name__
-    print(f"🚀 {model_name} 훈련 시작!")
-    print(f" 훈련 데이터: {X_train.shape}, 테스트 데이터: {X_test.shape}")
-    print(f" 에포크: {epochs}, 초기 학습률: {initial_lr}")
-    print(f" 학습률 스케줄: 코사인 감쇠 (eta_min: {initial_lr/100:.6f})")
-    print(f" 가중치 감쇠: {weight_decay}")
-    print(f" Early Stopping: 사용 안함 (전체 에포크 훈련)")
+    print(f"🚀 {model_name} training started!")
+    print(f" Training data: {X_train.shape}, Test data: {X_test.shape}")
+    print(f" Epochs: {epochs}, Initial learning rate: {initial_lr}")
+    print(f" Learning rate schedule: Cosine decay (eta_min: {initial_lr/100:.6f})")
+    print(f" Weight decay: {weight_decay}")
+    print(f" Early Stopping: Not used (full epoch training)")
 
     for epoch in range(epochs):
         model.train()
@@ -331,7 +331,7 @@ def evaluate_paper_model(model, X_test, y_test):
         outputs = model(X_test_tensor)
         predictions = torch.argmax(outputs, dim=1)
 
-    print("📊 논문 기반 모델 상세 분류 성능:")
+    print("📊 Paper-based model detailed classification performance:")
     print(classification_report(y_test, predictions.cpu().numpy(),
                                 target_names=[str(i) for i in range(10)]))
     
@@ -339,39 +339,39 @@ def evaluate_paper_model(model, X_test, y_test):
 
 # --- 데이터셋 로드 함수들 ---
 def load_dataset_from_npy():
-    """저장된 .npy 파일에서 데이터셋 로드 (prefix 자동 감지)"""
+    """Load dataset from saved .npy files (auto-detect prefix)"""
     
-    # 가능한 prefix들을 우선순위대로 시도
+    # Try possible prefixes in priority order
     prefixes = ['micro_', 'shift_', '', 'augmented_', 'enhanced_']
     
     for prefix in prefixes:
         try:
-            print(f"📁 .npy 파일에서 데이터셋 로드 중... (prefix: '{prefix}')")
+            print(f"📁 Loading dataset from .npy files... (prefix: '{prefix}')")
             X_train = np.load(f'{prefix}X_train.npy')
             X_test = np.load(f'{prefix}X_test.npy')
             y_train = np.load(f'{prefix}y_train.npy')
             y_test = np.load(f'{prefix}y_test.npy')
             
-            print(f"✅ 데이터셋 로드 성공! (prefix: '{prefix}')")
+            print(f"✅ Dataset loaded successfully! (prefix: '{prefix}')")
             print(f" - X_train: {X_train.shape}")
             print(f" - X_test: {X_test.shape}")
             print(f" - y_train: {y_train.shape}")
             print(f" - y_test: {y_test.shape}")
             
-            # 클래스별 분포 확인
+            # Check class distribution
             unique_train, counts_train = np.unique(y_train, return_counts=True)
             unique_test, counts_test = np.unique(y_test, return_counts=True)
-            print(f" - 훈련 데이터 클래스별 분포: {dict(zip(unique_train, counts_train))}")
-            print(f" - 테스트 데이터 클래스별 분포: {dict(zip(unique_test, counts_test))}")
+            print(f" - Training data class distribution: {dict(zip(unique_train, counts_train))}")
+            print(f" - Test data class distribution: {dict(zip(unique_test, counts_test))}")
             
             return X_train, X_test, y_train, y_test
             
         except FileNotFoundError:
             continue
     
-    # 모든 prefix를 시도했지만 실패
-    print(f"❌ 데이터셋 파일을 찾을 수 없습니다.")
-    print("💡 다음 중 하나를 실행해서 데이터셋을 먼저 생성하세요:")
+    # Failed after trying all prefixes
+    print(f"❌ Dataset files not found.")
+    print("💡 Please run one of the following to generate the dataset first:")
     print("   1. python shift_augmented_dataset.py --visualize")
     print("   2. python interactive_data_generator.py")
     return None, None, None, None
@@ -789,70 +789,70 @@ def interactive_test():
                 print(f"❌ 배치 테스트 중 오류: {e}")
                 
         elif choice == '5':
-            print("👋 테스트를 종료합니다.")
+            print("👋 Ending test.")
             break
         else:
-            print("❌ 올바른 옵션을 선택하세요.")
+            print("❌ Please select a valid option.")
 
 if __name__ == "__main__":
-    print("🎯 Interactive Template 기반 BNN 실험")
+    print("🎯 Interactive Template-based BNN Experiment")
     print("📄 Based on: Single-bit-per-weight deep CNNs without batch-normalization")
     print("🎨 Using: Interactive Template Creator Dataset")
     print("="*80)
 
-    # 1. 데이터셋 로드/생성
-    print("1️⃣ 데이터셋 로드/생성 중...")
+    # 1. Dataset loading/generation
+    print("1️⃣ Loading/generating dataset...")
     
-    # 방법 1: 저장된 .npy 파일에서 로드 시도
+    # Method 1: Try loading from saved .npy files
     X_train, X_test, y_train, y_test = load_dataset_from_npy()
     
-    # 방법 2: .npy 파일이 없으면 templates.json에서 생성 시도  
+    # Method 2: If no .npy files, try generating from templates.json  
     if X_train is None and BinaryDigitDataGenerator is not None:
-        print("\n🔄 .npy 파일이 없어서 templates.json에서 데이터셋 생성을 시도합니다...")
+        print("\n🔄 No .npy files found, attempting to generate dataset from templates.json...")
         X_train, X_test, y_train, y_test = load_dataset_from_templates(
             samples_per_digit=2500, test_size=0.2, random_state=42
         )
     
-    # 방법 3: 둘 다 실패하면 샘플 데이터셋 생성
+    # Method 3: If both fail, generate sample dataset
     if X_train is None:
-        print("\n🎲 템플릿도 없어서 샘플 데이터셋을 생성합니다...")
+        print("\n🎲 No templates available, generating sample dataset...")
         X_train, X_test, y_train, y_test = create_sample_dataset(samples_per_digit=300)
-        print("⚠️ 이는 테스트용 랜덤 데이터입니다. 실제 실험을 위해서는:")
-        print("   1. interactive_data_generator.py를 실행해서 템플릿 생성")
-        print("   2. 'Generate Data' 버튼으로 데이터셋 저장")
+        print("⚠️ This is test random data. For actual experiments:")
+        print("   1. Run interactive_data_generator.py to create templates")
+        print("   2. Use 'Generate Data' button to save dataset")
     
     if X_train is None:
-        print("❌ 데이터셋 로드/생성에 실패했습니다. 프로그램을 종료합니다.")
+        print("❌ Failed to load/generate dataset. Exiting program.")
         exit(1)
  
-    # 2. 논문 기반 모델 생성
-    print("\n2️⃣ 논문 기반 모델 생성 중...")
-    c1_ch, c2_ch = 128, 16  # 파라미터 수 줄임
+    # 2. Paper-based model creation
+    print("\n2️⃣ Creating paper-based model...")
+    c1_ch, c2_ch = 128, 16  # Reduced number of parameters
     scale_value = 10.0
     
     paper_model = PaperInspiredBNN(c1_channels=c1_ch, c2_channels=c2_ch, 
                                    num_classes=10, scale_value=scale_value)
     
     total_params = sum(p.numel() for p in paper_model.parameters())
-    print(f" 총 파라미터 수: {total_params:,}")
+    print(f" Total parameters: {total_params:,}")
 
-    # 3. 논문 기반 모델 훈련
-    print("\n3️⃣ 논문 기반 모델 훈련 시작...")
+    # 3. Paper-based model training
+    print("\n3️⃣ Starting paper-based model training...")
     train_losses, train_accuracies, test_accuracies, trained_model = train_paper_inspired_model(
         paper_model, X_train, y_train, X_test, y_test,
-        epochs=1000, initial_lr=0.001, weight_decay=1e-4  # 에포크 줄임
+        epochs=1000, initial_lr=0.001, weight_decay=1e-4  # Reduced epochs
     )
 
-    # 4. 결과 시각화
-    print("\n4️⃣ 결과 시각화...")
+    # 4. Results visualization
+    print("\n4️⃣ Visualizing results...")
     plot_paper_results(train_losses, train_accuracies, test_accuracies)
 
-    # 5. 모델 평가
-    print("\n5️⃣ 모델 평가...")
+    # 5. Model evaluation
+    print("\n5️⃣ Evaluating model...")
     predictions = evaluate_paper_model(trained_model, X_test, y_test)
 
-    # 6. 모델 저장
-    print("\n6️⃣ 모델 저장...")
+    # 6. Model saving
+    print("\n6️⃣ Saving model...")
     model_save_path = "interactive_template_bnn_model.pth"
     torch.save({
         'model_state_dict': trained_model.state_dict(),
@@ -870,7 +870,7 @@ if __name__ == "__main__":
         'final_test_accuracy': test_accuracies[-1],
         'best_test_accuracy': max(test_accuracies)
     }, model_save_path)
-    print(f"✅ 모델 저장 완료: {model_save_path}")
+    print(f"✅ Model saved successfully: {model_save_path}")
 
     # 7. 실험 요약
     print("\n" + "="*80)
@@ -908,7 +908,7 @@ if __name__ == "__main__":
     print("   from BNN_Model import BNNModelTester, interactive_test")
     print("   interactive_test()")
 
-    print(f"CUDA 사용 가능: {torch.cuda.is_available()}")
+    print(f"CUDA available: {torch.cuda.is_available()}")
     if torch.cuda.is_available():
-        print(f"현재 GPU: {torch.cuda.get_device_name()}")
-        print(f"GPU 메모리: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB") 
+        print(f"Current GPU: {torch.cuda.get_device_name()}")
+        print(f"GPU memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB") 

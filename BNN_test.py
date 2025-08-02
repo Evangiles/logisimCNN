@@ -71,36 +71,36 @@ class InteractiveHexGenerator:
         self.btn_save.on_clicked(self.save_hex)
 
     def on_press(self, event):
-        # 캔버스 밖이거나, 마우스 버튼 이벤트가 아니면 무시
+        # Ignore if outside canvas or not a mouse button event
         if event.inaxes != self.ax or not event.button:
             return
         
-        try: # 좌표가 이미지 밖으로 나가는 경우 예외처리
+        try: # Exception handling for coordinates outside image bounds
             x, y = int(round(event.xdata)), int(round(event.ydata))
         except (ValueError, TypeError):
             return
 
         if 0 <= x < self.grid_size and 0 <= y < self.grid_size:
-            if event.button == 1:  # 왼쪽 클릭: 그리기 (1)
+            if event.button == 1:  # Left click: draw (1)
                 self.grid_data[y, x] = 1
-            elif event.button == 3: # 오른쪽 클릭: 지우기 (0)
+            elif event.button == 3: # Right click: erase (0)
                 self.grid_data[y, x] = 0
             self.update_canvas()
 
     def on_motion(self, event):
-        # 캔버스 밖이거나, 마우스 버튼이 눌러지지 않은 상태면 무시
+        # Ignore if outside canvas or no mouse button pressed
         if event.inaxes != self.ax or not event.buttons:
             return
             
-        try: # 좌표가 이미지 밖으로 나가는 경우 예외처리
+        try: # Exception handling for coordinates outside image bounds
             x, y = int(round(event.xdata)), int(round(event.ydata))
         except (ValueError, TypeError):
             return
 
         if 0 <= x < self.grid_size and 0 <= y < self.grid_size:
-            if event.buttons == 1: # 왼쪽 드래그: 그리기
+            if event.buttons == 1: # Left drag: draw
                 self.grid_data[y, x] = 1
-            elif event.buttons == 3: # 오른쪽 드래그: 지우기
+            elif event.buttons == 3: # Right drag: erase
                 self.grid_data[y, x] = 0
             self.update_canvas()
 

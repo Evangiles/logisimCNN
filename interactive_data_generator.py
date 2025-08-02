@@ -194,7 +194,7 @@ class InteractiveTemplateCreator:
         }
         
     def load_template(self, event):
-        """템플릿 로드"""
+        """Load template"""
         if self.current_digit in self.templates and self.templates[self.current_digit]:
             # Show available templates for current digit
             template_names = list(self.templates[self.current_digit].keys())
